@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111">
+<meta name="apple-mobile-web-app-title" content="니끌로">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<title>니끌로</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; }
+  body {
+    background:#111; color:#eee;
+    font-family:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    display:flex; flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top));
+  }
+  header h1 { font-size:17px; font-weight:600; }
+  button {
+    background:#2a2a2a; color:#eee; border:none; border-radius:8px;
+    padding:8px 14px; font-size:14px; font-family:inherit;
+  }
+  button:active { opacity:.7; }
+  button.primary { background:#0a84ff; font-weight:600; }
+  button.on { background:#eee; color:#111; font-weight:600; }
+  #stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 8px; position:relative; }
+  #canvas { max-width:100%; max-height:100%; touch-action:none; }
+  #cmpBtn {
+    position:absolute; right:16px; bottom:12px; border-radius:20px; padding:8px 16px;
+    background:rgba(40,40,40,.85); font-size:13px;
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:none;
+  }
+  #empty { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; align-items:center; justify-content:center; color:#888; font-size:15px; }
+  #empty button { padding:14px 28px; font-size:16px; }
+  .strip { display:flex; gap:8px; overflow-x:auto; padding:10px 16px; -webkit-overflow-scrolling:touch; }
+  .strip::-webkit-scrollbar { display:none; }
+  .fitem { flex:0 0 auto; text-align:center; font-size:11px; color:#aaa; }
+  .fitem canvas { width:64px; height:64px; border-radius:8px; border:2px solid transparent; display:block; margin-bottom:4px; }
+  .fitem.sel canvas { border-color:#0a84ff; }
+  .fitem.sel { color:#0a84ff; }
+  #sliders { padding:4px 16px; }
+  .srow { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:13px; }
+  .srow label { width:52px; color:#aaa; flex:none; }
+  .srow output { width:34px; text-align:right; color:#aaa; flex:none; font-size:12px; }
+  input[type=range] { flex:1; accent-color:#0a84ff; height:28px; }
+  #cropbar { display:none; gap:8px; padding:8px 16px; justify-content:center; }
+  #cropbar.show { display:flex; }
+  #photos { border-top:1px solid #222; }
+  #photos .pitem { flex:0 0 auto; position:relative; }
+  #photos canvas { width:56px; height:56px; border-radius:6px; border:2px solid transparent; display:block; object-fit:cover; }
+  #photos .pitem.sel canvas { border-color:#0a84ff; }
+  #photos .pitem .x {
+    position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%;
+    background:#444; color:#fff; font-size:12px; line-height:20px; text-align:center;
+  }
+  #actions { display:flex; gap:8px; padding:8px 16px 12px; }
+  #actions button { flex:1; padding:12px; font-size:15px; }
+  #toast {
+    position:fixed; left:50%; bottom:120px; transform:translateX(-50%);
+    background:#333; padding:10px 18px; border-radius:20px; font-size:14px;
+    opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap;
+  }
+  #toast.show { opacity:1; }
+  input[type=file] { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>니끌로</h1>
+  <button id="addBtn">+ 사진 추가</button>
+</header>
+
+<div id="stage">
+  <canvas id="canvas"></canvas>
+  <button id="cmpBtn" style="display:none">원본</button>
+  <div id="empty">
+    <div>아이폰 사진을 골라 필터·보정 후<br>JPG로 저장하세요</div>
+    <button class="primary" id="pickBtn">사진 선택</button>
+  </div>
+</div>
+
+<div class="strip" id="filters"></div>
+
+<div id="sliders">
+  <div class="srow"><label>밝기</label><input type="range" id="s-br" min="-100" max="100" value="0"><output>0</output></div>
+  <div class="srow"><label>대비</label><input type="range" id="s-ct" min="-100" max="100" value="0"><output>0</output></div>
+  <div class="srow"><label>채도</label><input type="range" id="s-sa" min="-100" max="100" value="0"><output>0</output></div>
+  <div class="srow"><label>선명하게</label><input type="range" id="s-sh" min="0" max="100" value="0"><output>0</output></div>
+</div>
+
+<div id="cropbar">
+  <button data-a="">자유</button>
+  <button data-a="1">1:1</button>
+  <button data-a="0.8">4:5</button>
+  <button data-a="1.7778">16:9</button>
+  <button id="cropReset">초기화</button>
+</div>
+
+<div class="strip" id="photos"></div>
+
+<div id="actions">
+  <button id="cropBtn">자르기</button>
+  <button id="applyAllBtn">전체 적용</button>
+  <button class="primary" id="saveBtn">저장</button>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" multiple>
+
+<script>
+'use strict';
+
+// 필터 프리셋 — 밝기/대비/채도/색온도/페이드 조합 (인스타 필터 근사)
+const FILTERS = {
+  '원본':      { br:0,  ct:0,  sa:0,  temp:0,   fade:0 },
+  'Clarendon': { br:5,  ct:25, sa:35, temp:-8,  fade:0 },
+  'Gingham':   { br:8,  ct:-8, sa:-15,temp:5,   fade:0.18 },
+  'Juno':      { br:4,  ct:10, sa:30, temp:12,  fade:0 },
+  'Lark':      { br:12, ct:-5, sa:12, temp:-5,  fade:0 },
+  'Valencia':  { br:10, ct:8,  sa:10, temp:15,  fade:0.08 },
+};
+const PREVIEW_MAX = 1400, THUMB = 64, JPEG_Q = 0.9;
+const defSettings = () => ({ filter:'원본', br:0, ct:0, sa:0, sh:0, crop:{x:0,y:0,w:1,h:1}, aspect:null });
+
+const photos = [];   // { file, name, preview:canvas, settings }
+let cur = -1, cropMode = false;
+
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), ctx = canvas.getContext('2d');
+const fileInput = $('file');
+const sliders = { br:$('s-br'), ct:$('s-ct'), sa:$('s-sa'), sh:$('s-sh') };
+
+// ---------- 픽셀 파이프라인 (미리보기·내보내기 공용) ----------
+function effective(s) {
+  const f = FILTERS[s.filter];
+  return { br:f.br+s.br, ct:f.ct+s.ct, sa:f.sa+s.sa, temp:f.temp, fade:f.fade, sh:s.sh };
+}
+function applyPipeline(imageData, s) {
+  const e = effective(s), d = imageData.data;
+  const br = 1 + e.br/100*0.7, ct = 1 + e.ct/100*0.7, sat = 1 + e.sa/100;
+  const temp = e.temp*1.6, fade = e.fade;
+  // 채널별 점 연산은 LUT로 (밝기→대비→색온도→페이드)
+  const lut = [new Uint8ClampedArray(256), new Uint8ClampedArray(256), new Uint8ClampedArray(256)];
+  const shift = [temp, 0, -temp];
+  for (let c = 0; c < 3; c++) for (let i = 0; i < 256; i++) {
+    let v = i*br;
+    v = (v-128)*ct + 128 + shift[c];
+    v = v*(1-fade) + 128*fade;
+    lut[c][i] = v;
+  }
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+    if (sat !== 1) {
+      const y = 0.299*r + 0.587*g + 0.114*b;
+      r = y + (r-y)*sat; g = y + (g-y)*sat; b = y + (b-y)*sat;
+      r = r<0?0:r>255?255:r; g = g<0?0:g>255?255:g; b = b<0?0:b>255?255:b;
+    }
+    d[i] = lut[0][r|0]; d[i+1] = lut[1][g|0]; d[i+2] = lut[2][b|0];
+  }
+  if (e.sh > 0) sharpen(imageData, e.sh/100*0.8);
+  return imageData;
+}
+function sharpen(imageData, k) { // 상하좌우 언샤프 마스크
+  const { data:d, width:w, height:h } = imageData;
+  const src = new Uint8ClampedArray(d);
+  const c0 = 1 + 4*k;
+  for (let y = 1; y < h-1; y++) {
+    let i = (y*w+1)*4;
+    for (let x = 1; x < w-1; x++, i += 4) {
+      for (let c = 0; c < 3; c++) {
+        const j = i+c;
+        d[j] = src[j]*c0 - k*(src[j-4] + src[j+4] + src[j-w*4] + src[j+w*4]);
+      }
+    }
+  }
+}
+
+// ---------- 사진 로드 ----------
+const loadImg = (img, url) => new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('decode')); img.src = url; });
+async function addFiles(files) {
+  let failed = 0;
+  for (const file of files) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    try { await loadImg(img, url); } catch { failed++; URL.revokeObjectURL(url); continue; }
+    const scale = Math.min(1, PREVIEW_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const preview = document.createElement('canvas');
+    preview.width = Math.round(img.naturalWidth*scale);
+    preview.height = Math.round(img.naturalHeight*scale);
+    preview.getContext('2d').drawImage(img, 0, 0, preview.width, preview.height);
+    URL.revokeObjectURL(url);
+    photos.push({ file, name: file.name.replace(/\.[^.]+$/, ''), preview, settings: defSettings() });
+  }
+  if (failed) toast(`${failed}장은 지원하지 않는 형식이라 제외했어요`);
+  if (photos.length) select(cur < 0 ? 0 : cur);
+  renderPhotoStrip();
+  $('empty').style.display = photos.length ? 'none' : 'flex';
+  $('cmpBtn').style.display = photos.length ? '' : 'none';
+}
+
+// ---------- 미리보기 렌더 ----------
+// 드래그 중엔 저해상도로 즉시 반응, 손 떼면 고해상도로 정리
+let raf = 0, settleTimer = 0;
+const render = () => schedule(false);
+const renderFast = () => {
+  schedule(true);
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => schedule(false), 160);
+};
+function schedule(fast) {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => renderNow(fast));
+}
+function renderNow(fast) {
+  if (cur < 0) return;
+  const p = photos[cur], s = p.settings;
+  const scale = fast ? Math.min(1, 640 / Math.max(p.preview.width, p.preview.height)) : 1;
+  canvas.width = Math.round(p.preview.width*scale);
+  canvas.height = Math.round(p.preview.height*scale);
+  ctx.drawImage(p.preview, 0, 0, canvas.width, canvas.height);
+  const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  ctx.putImageData(applyPipeline(id, s), 0, 0);
+  drawCropOverlay(s.crop);
+}
+function drawCropOverlay(c) {
+  const W = canvas.width, H = canvas.height;
+  const x = c.x*W, y = c.y*H, w = c.w*W, h = c.h*H;
+  if (!cropMode && c.w === 1 && c.h === 1) return;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(0, 0, W, y); ctx.fillRect(0, y+h, W, H-y-h);
+  ctx.fillRect(0, y, x, h); ctx.fillRect(x+w, y, W-x-w, h);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(2, W/400);
+  ctx.strokeRect(x, y, w, h);
+  if (cropMode) {
+    ctx.fillStyle = '#fff';
+    const r = Math.max(8, W/60);
+    for (const [hx, hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]])
+      ctx.fillRect(hx-r/2, hy-r/2, r, r);
+  }
+}
+
+// ---------- Crop 조작 (포인터) ----------
+let drag = null;
+canvas.addEventListener('pointerdown', ev => {
+  if (!cropMode || cur < 0) return;
+  try { canvas.setPointerCapture(ev.pointerId); } catch {}
+  const pt = toCanvas(ev), c = photos[cur].settings.crop;
+  const W = canvas.width, H = canvas.height, grab = Math.max(24, W/18);
+  const corners = { tl:[c.x*W, c.y*H], tr:[(c.x+c.w)*W, c.y*H], bl:[c.x*W, (c.y+c.h)*H], br:[(c.x+c.w)*W, (c.y+c.h)*H] };
+  drag = null;
+  for (const k in corners)
+    if (Math.abs(pt.x-corners[k][0]) < grab && Math.abs(pt.y-corners[k][1]) < grab) { drag = { mode:k, start:pt, orig:{...c} }; return; }
+  if (pt.x > c.x*W && pt.x < (c.x+c.w)*W && pt.y > c.y*H && pt.y < (c.y+c.h)*H)
+    drag = { mode:'move', start:pt, orig:{...c} };
+});
+canvas.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  const pt = toCanvas(ev), c = photos[cur].settings.crop, o = drag.orig;
+  const W = canvas.width, H = canvas.height;
+  const dx = (pt.x-drag.start.x)/W, dy = (pt.y-drag.start.y)/H;
+  if (drag.mode === 'move') {
+    c.x = clamp(o.x+dx, 0, 1-o.w); c.y = clamp(o.y+dy, 0, 1-o.h);
+  } else {
+    // 코너 리사이즈 — 반대편 코너 고정
+    const R = photos[cur].settings.aspect; // 픽셀 비율 w/h (null=자유)
+    let x1 = o.x, y1 = o.y, x2 = o.x+o.w, y2 = o.y+o.h;
+    if (drag.mode.includes('l')) x1 = clamp(o.x+dx, 0, x2-0.05);
+    if (drag.mode.includes('r')) x2 = clamp(o.x+o.w+dx, x1+0.05, 1);
+    if (drag.mode.includes('t')) y1 = clamp(o.y+dy, 0, y2-0.05);
+    if (drag.mode.includes('b')) y2 = clamp(o.y+o.h+dy, y1+0.05, 1);
+    if (R) { // 가로 기준으로 세로를 비율에 맞춤
+      const hNorm = clamp((x2-x1)*W/R/H, 0.05, 1);
+      if (drag.mode.includes('t')) y1 = clamp(y2-hNorm, 0, y2-0.05);
+      else y2 = clamp(y1+hNorm, y1+0.05, 1);
+    }
+    c.x = x1; c.y = y1; c.w = x2-x1; c.h = y2-y1;
+  }
+  renderFast();
+});
+canvas.addEventListener('pointerup', () => { if (drag) { drag = null; render(); } });
+function toCanvas(ev) {
+  const r = canvas.getBoundingClientRect();
+  return { x:(ev.clientX-r.left)*canvas.width/r.width, y:(ev.clientY-r.top)*canvas.height/r.height };
+}
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+function setAspect(R) { // R = w/h 픽셀 비율, null = 자유
+  const p = photos[cur], s = p.settings;
+  s.aspect = R;
+  if (R) { // 최대 크기로 중앙 배치
+    const W = p.preview.width, H = p.preview.height;
+    let w = 1, h = W/R/H;
+    if (h > 1) { h = 1; w = R*H/W; }
+    s.crop = { x:(1-w)/2, y:(1-h)/2, w, h };
+  }
+  render();
+  updateCropbar();
+}
+function updateCropbar() {
+  const a = cur >= 0 ? photos[cur].settings.aspect : null;
+  document.querySelectorAll('#cropbar [data-a]').forEach(b =>
+    b.classList.toggle('on', String(a ?? '') === b.dataset.a));
+}
+
+// ---------- UI ----------
+function select(i) {
+  cur = i;
+  const s = photos[i].settings;
+  for (const k of ['br','ct','sa','sh']) { sliders[k].value = s[k]; sliders[k].nextElementSibling.value = s[k]; }
+  renderFilterStrip();
+  renderPhotoStrip();
+  updateCropbar();
+  render();
+}
+function renderFilterStrip() {
+  const el = $('filters');
+  el.innerHTML = '';
+  if (cur < 0) return;
+  const p = photos[cur];
+  for (const name in FILTERS) {
+    const item = document.createElement('div');
+    item.className = 'fitem' + (p.settings.filter === name ? ' sel' : '');
+    const c = document.createElement('canvas');
+    const sc = Math.max(THUMB/p.preview.width, THUMB/p.preview.height);
+    c.width = c.height = THUMB;
+    const cc = c.getContext('2d');
+    cc.drawImage(p.preview, (p.preview.width*sc-THUMB)/-2, (p.preview.height*sc-THUMB)/-2, p.preview.width*sc, p.preview.height*sc);
+    cc.putImageData(applyPipeline(cc.getImageData(0,0,THUMB,THUMB), { ...defSettings(), filter:name }), 0, 0);
+    item.append(c, document.createTextNode(name));
+    item.onclick = () => { p.settings.filter = name; renderFilterStrip(); render(); };
+    el.appendChild(item);
+  }
+}
+function renderPhotoStrip() {
+  const el = $('photos');
+  el.innerHTML = '';
+  photos.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'pitem' + (i === cur ? ' sel' : '');
+    const c = document.createElement('canvas');
+    const sc = Math.max(56/p.preview.width, 56/p.preview.height);
+    c.width = c.height = 56;
+    c.getContext('2d').drawImage(p.preview, (p.preview.width*sc-56)/-2, (p.preview.height*sc-56)/-2, p.preview.width*sc, p.preview.height*sc);
+    const x = document.createElement('div');
+    x.className = 'x'; x.textContent = '✕';
+    x.onclick = ev => {
+      ev.stopPropagation();
+      photos.splice(i, 1);
+      if (!photos.length) { cur = -1; canvas.width = canvas.height = 0; $('empty').style.display = 'flex'; $('cmpBtn').style.display = 'none'; renderPhotoStrip(); $('filters').innerHTML = ''; }
+      else select(Math.min(cur, photos.length-1));
+    };
+    item.append(c, x);
+    item.onclick = () => select(i);
+    el.appendChild(item);
+  });
+}
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+$('addBtn').onclick = $('pickBtn').onclick = () => fileInput.click();
+fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value = ''; };
+
+for (const k of ['br','ct','sa','sh'])
+  sliders[k].oninput = () => {
+    if (cur < 0) return;
+    photos[cur].settings[k] = +sliders[k].value;
+    sliders[k].nextElementSibling.value = sliders[k].value;
+    renderFast();
+  };
+
+// 길게 누르는 동안 원본 표시 (보정 전후 비교)
+const cmpBtn = $('cmpBtn');
+cmpBtn.addEventListener('pointerdown', ev => {
+  ev.preventDefault();
+  if (cur < 0) return;
+  cancelAnimationFrame(raf); clearTimeout(settleTimer);
+  const p = photos[cur];
+  canvas.width = p.preview.width; canvas.height = p.preview.height;
+  ctx.drawImage(p.preview, 0, 0);
+});
+const cmpEnd = () => { if (cur >= 0) render(); };
+cmpBtn.addEventListener('pointerup', cmpEnd);
+cmpBtn.addEventListener('pointercancel', cmpEnd);
+cmpBtn.addEventListener('pointerleave', cmpEnd);
+
+$('cropBtn').onclick = () => {
+  if (cur < 0) return;
+  cropMode = !cropMode;
+  $('cropBtn').classList.toggle('on', cropMode);
+  $('cropbar').classList.toggle('show', cropMode);
+  render();
+};
+document.querySelectorAll('#cropbar [data-a]').forEach(b =>
+  b.onclick = () => setAspect(b.dataset.a ? +b.dataset.a : null));
+$('cropReset').onclick = () => {
+  if (cur < 0) return;
+  photos[cur].settings.crop = { x:0, y:0, w:1, h:1 };
+  photos[cur].settings.aspect = null;
+  render(); updateCropbar();
+};
+
+$('applyAllBtn').onclick = () => {
+  if (cur < 0) return;
+  const s = photos[cur].settings;
+  photos.forEach((p, i) => { // crop은 사진별 구도가 달라 제외
+    if (i !== cur) Object.assign(p.settings, { filter:s.filter, br:s.br, ct:s.ct, sa:s.sa, sh:s.sh });
+  });
+  toast(`${photos.length}장에 필터·보정 적용됨`);
+};
+
+// ---------- 내보내기 ----------
+$('saveBtn').onclick = async () => {
+  if (!photos.length) return;
+  const btn = $('saveBtn');
+  btn.disabled = true;
+  try {
+    const files = [];
+    for (let i = 0; i < photos.length; i++) {
+      btn.textContent = `변환 중 ${i+1}/${photos.length}`;
+      await new Promise(r => setTimeout(r)); // UI 갱신 양보
+      files.push(await exportPhoto(photos[i]));
+    }
+    btn.textContent = '저장';
+    if (navigator.canShare && navigator.canShare({ files })) {
+      await navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') throw e; });
+    } else {
+      for (const f of files) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+        await new Promise(r => setTimeout(r, 300));
+        URL.revokeObjectURL(a.href);
+      }
+      toast(`${files.length}장 다운로드됨`);
+    }
+  } catch (e) {
+    toast('저장 실패: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '저장';
+  }
+};
+async function exportPhoto(p) {
+  // 원본 해상도로 다시 디코드 (메모리 절약 — 한 장씩)
+  const url = URL.createObjectURL(p.file);
+  const img = new Image();
+  await loadImg(img, url);
+  const c = p.settings.crop;
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(c.w*W); cv.height = Math.round(c.h*H);
+  const cx = cv.getContext('2d');
+  cx.drawImage(img, c.x*W, c.y*H, cv.width, cv.height, 0, 0, cv.width, cv.height);
+  URL.revokeObjectURL(url);
+  cx.putImageData(applyPipeline(cx.getImageData(0, 0, cv.width, cv.height), p.settings), 0, 0);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', JPEG_Q));
+  return new File([blob], `${p.name}_edited.jpg`, { type:'image/jpeg' });
+}
+</script>
+</body>
+</html>
