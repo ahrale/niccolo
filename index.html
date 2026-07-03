@@ -4,12 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#111">
 <meta name="apple-mobile-web-app-title" content="니끌로">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="manifest" href="manifest.json">
 <title>니끌로</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -22,9 +20,9 @@
   }
   header {
     display:flex; align-items:center; justify-content:space-between;
-    padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top));
+    padding:8px 16px; padding-top:calc(8px + env(safe-area-inset-top));
   }
-  header h1 { font-size:17px; font-weight:600; }
+  header h1 { font-size:16px; font-weight:600; }
   button {
     background:#2a2a2a; color:#eee; border:none; border-radius:8px;
     padding:8px 14px; font-size:14px; font-family:inherit;
@@ -32,7 +30,7 @@
   button:active { opacity:.7; }
   button.primary { background:#0a84ff; font-weight:600; }
   button.on { background:#eee; color:#111; font-weight:600; }
-  #stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 8px; position:relative; }
+  #stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 4px; position:relative; overflow:hidden; }
   #canvas { max-width:100%; max-height:100%; touch-action:none; }
   #cmpBtn {
     position:absolute; right:16px; bottom:12px; border-radius:20px; padding:8px 16px;
@@ -41,29 +39,32 @@
   }
   #empty { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; align-items:center; justify-content:center; color:#888; font-size:15px; }
   #empty button { padding:14px 28px; font-size:16px; }
-  .strip { display:flex; gap:8px; overflow-x:auto; padding:10px 16px; -webkit-overflow-scrolling:touch; }
+  .strip { display:flex; gap:6px; overflow-x:auto; padding:6px 12px; -webkit-overflow-scrolling:touch; }
   .strip::-webkit-scrollbar { display:none; }
-  .fitem { flex:0 0 auto; text-align:center; font-size:11px; color:#aaa; }
-  .fitem canvas { width:64px; height:64px; border-radius:8px; border:2px solid transparent; display:block; margin-bottom:4px; }
+  .fitem { flex:0 0 auto; text-align:center; font-size:10px; color:#aaa; }
+  .fitem canvas { width:52px; height:52px; border-radius:8px; border:2px solid transparent; display:block; margin-bottom:2px; }
   .fitem.sel canvas { border-color:#0a84ff; }
   .fitem.sel { color:#0a84ff; }
-  #sliders { padding:4px 16px; }
-  .srow { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:13px; }
-  .srow label { width:52px; color:#aaa; flex:none; }
+  #adjust { padding:0 16px; }
+  #atabs { display:flex; gap:6px; }
+  #atabs button { flex:1; padding:6px 0; font-size:13px; color:#aaa; background:none; }
+  #atabs button.on { color:#fff; background:#2a2a2a; }
+  .srow { display:flex; align-items:center; gap:10px; font-size:13px; }
   .srow output { width:34px; text-align:right; color:#aaa; flex:none; font-size:12px; }
-  input[type=range] { flex:1; accent-color:#0a84ff; height:28px; }
-  #cropbar { display:none; gap:8px; padding:8px 16px; justify-content:center; }
+  input[type=range] { flex:1; accent-color:#0a84ff; height:30px; }
+  #cropbar { display:none; gap:8px; padding:6px 12px; overflow-x:auto; }
   #cropbar.show { display:flex; }
+  #cropbar button { flex:0 0 auto; }
   #photos { border-top:1px solid #222; }
   #photos .pitem { flex:0 0 auto; position:relative; }
-  #photos canvas { width:56px; height:56px; border-radius:6px; border:2px solid transparent; display:block; object-fit:cover; }
+  #photos canvas { width:48px; height:48px; border-radius:6px; border:2px solid transparent; display:block; object-fit:cover; }
   #photos .pitem.sel canvas { border-color:#0a84ff; }
   #photos .pitem .x {
     position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%;
     background:#444; color:#fff; font-size:12px; line-height:20px; text-align:center;
   }
-  #actions { display:flex; gap:8px; padding:8px 16px 12px; }
-  #actions button { flex:1; padding:12px; font-size:15px; }
+  #actions { display:flex; gap:8px; padding:6px 16px 10px; }
+  #actions button { flex:1; padding:11px; font-size:15px; }
   #toast {
     position:fixed; left:50%; bottom:120px; transform:translateX(-50%);
     background:#333; padding:10px 18px; border-radius:20px; font-size:14px;
@@ -90,11 +91,14 @@
 
 <div class="strip" id="filters"></div>
 
-<div id="sliders">
-  <div class="srow"><label>밝기</label><input type="range" id="s-br" min="-100" max="100" value="0"><output>0</output></div>
-  <div class="srow"><label>대비</label><input type="range" id="s-ct" min="-100" max="100" value="0"><output>0</output></div>
-  <div class="srow"><label>채도</label><input type="range" id="s-sa" min="-100" max="100" value="0"><output>0</output></div>
-  <div class="srow"><label>선명하게</label><input type="range" id="s-sh" min="0" max="100" value="0"><output>0</output></div>
+<div id="adjust">
+  <div id="atabs">
+    <button data-k="br" class="on">밝기</button>
+    <button data-k="ct">대비</button>
+    <button data-k="sa">채도</button>
+    <button data-k="sh">선명하게</button>
+  </div>
+  <div class="srow"><input type="range" id="aslider" min="-100" max="100" value="0"><output>0</output></div>
 </div>
 
 <div id="cropbar">
@@ -102,6 +106,7 @@
   <button data-a="1">1:1</button>
   <button data-a="0.8">4:5</button>
   <button data-a="1.7778">16:9</button>
+  <button data-a="0.5625" data-out="1080x1920">1080×1920</button>
   <button id="cropReset">초기화</button>
 </div>
 
@@ -129,7 +134,7 @@ const FILTERS = {
   'Valencia':  { br:10, ct:8,  sa:10, temp:15,  fade:0.08 },
 };
 const PREVIEW_MAX = 1400, THUMB = 64, JPEG_Q = 0.9;
-const defSettings = () => ({ filter:'원본', br:0, ct:0, sa:0, sh:0, crop:{x:0,y:0,w:1,h:1}, aspect:null });
+const defSettings = () => ({ filter:'원본', br:0, ct:0, sa:0, sh:0, crop:{x:0,y:0,w:1,h:1}, aspect:null, outSize:null });
 
 const photos = [];   // { file, name, preview:canvas, settings }
 let cur = -1, cropMode = false;
@@ -137,7 +142,9 @@ let cur = -1, cropMode = false;
 const $ = id => document.getElementById(id);
 const canvas = $('canvas'), ctx = canvas.getContext('2d');
 const fileInput = $('file');
-const sliders = { br:$('s-br'), ct:$('s-ct'), sa:$('s-sa'), sh:$('s-sh') };
+const RANGES = { br:[-100,100], ct:[-100,100], sa:[-100,100], sh:[0,100] };
+let adjKey = 'br';
+const aslider = $('aslider');
 
 // ---------- 픽셀 파이프라인 (미리보기·내보내기 공용) ----------
 function effective(s) {
@@ -222,86 +229,222 @@ function schedule(fast) {
 }
 function renderNow(fast) {
   if (cur < 0) return;
-  const p = photos[cur], s = p.settings;
-  const scale = fast ? Math.min(1, 640 / Math.max(p.preview.width, p.preview.height)) : 1;
-  canvas.width = Math.round(p.preview.width*scale);
-  canvas.height = Math.round(p.preview.height*scale);
-  ctx.drawImage(p.preview, 0, 0, canvas.width, canvas.height);
+  if (cropMode) return renderCrop();
+  // 일반 모드: 잘린 결과만 표시 (iOS 사진 앱과 동일)
+  const p = photos[cur], s = p.settings, c = s.crop;
+  const pw = p.preview.width, ph = p.preview.height;
+  const cw = c.w*pw, ch = c.h*ph;
+  const scale = fast ? Math.min(1, 640 / Math.max(cw, ch)) : 1;
+  canvas.width = Math.round(cw*scale);
+  canvas.height = Math.round(ch*scale);
+  ctx.drawImage(p.preview, c.x*pw, c.y*ph, cw, ch, 0, 0, canvas.width, canvas.height);
   const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
   ctx.putImageData(applyPipeline(id, s), 0, 0);
-  drawCropOverlay(s.crop);
 }
-function drawCropOverlay(c) {
-  const W = canvas.width, H = canvas.height;
-  const x = c.x*W, y = c.y*H, w = c.w*W, h = c.h*H;
-  if (!cropMode && c.w === 1 && c.h === 1) return;
-  ctx.fillStyle = 'rgba(0,0,0,.55)';
-  ctx.fillRect(0, 0, W, y); ctx.fillRect(0, y+h, W, H-y-h);
-  ctx.fillRect(0, y, x, h); ctx.fillRect(x+w, y, W-x-w, h);
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(2, W/400);
-  ctx.strokeRect(x, y, w, h);
-  if (cropMode) {
-    ctx.fillStyle = '#fff';
-    const r = Math.max(8, W/60);
-    for (const [hx, hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]])
-      ctx.fillRect(hx-r/2, hy-r/2, r, r);
+
+// ---------- Crop 모드 (iOS 사진 앱 방식: 프레임 고정, 사진이 아래에서 움직임) ----------
+const stageEl = $('stage');
+let cropView = null; // { s, dx, dy, Fx, Fy, Fw, Fh } — 캔버스 px 기준 이미지 배율·위치와 프레임
+const qFactor = () => canvas.width / Math.max(1, stageEl.clientWidth - 8); // 화면 1px → 캔버스 px
+function fitCrop() { // 현재 crop이 프레임을 가득 채우도록 이미지 배율·위치 계산
+  const p = photos[cur], c = p.settings.crop;
+  const pw = p.preview.width, ph = p.preview.height;
+  const M = 14 * qFactor();
+  const availW = canvas.width - 2*M, availH = canvas.height - 2*M;
+  const A = (c.w*pw)/(c.h*ph);
+  let Fw = availW, Fh = Fw/A;
+  if (Fh > availH) { Fh = availH; Fw = Fh*A; }
+  const Fx = (canvas.width-Fw)/2, Fy = (canvas.height-Fh)/2;
+  const s = Fw/(c.w*pw);
+  cropView = { s, dx: Fx - c.x*pw*s, dy: Fy - c.y*ph*s, Fx, Fy, Fw, Fh };
+}
+function cropFrame() { // 이미지 변환 기준 현재 crop의 화면 위치
+  const p = photos[cur], c = p.settings.crop, v = cropView;
+  return { x: c.x*p.preview.width*v.s + v.dx, y: c.y*p.preview.height*v.s + v.dy,
+           w: c.w*p.preview.width*v.s, h: c.h*p.preview.height*v.s };
+}
+function renderCrop() {
+  // ponytail: crop 모드는 고정 해상도(≤2x) 단일 경로 — 제스처 중 해상도 전환 시 좌표계가 흔들려서
+  const p = photos[cur], se = p.settings;
+  const q = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.round(Math.max(50, stageEl.clientWidth - 8)*q);
+  const H = Math.round(Math.max(50, stageEl.clientHeight)*q);
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; cropView = null; }
+  if (!cropView) fitCrop();
+  const v = cropView;
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(p.preview, v.dx, v.dy, p.preview.width*v.s, p.preview.height*v.s);
+  const id = ctx.getImageData(0, 0, W, H);
+  ctx.putImageData(applyPipeline(id, se), 0, 0);
+  const F = cropFrame(), k = qFactor();
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.fillRect(0, 0, W, F.y); ctx.fillRect(0, F.y+F.h, W, H-F.y-F.h);
+  ctx.fillRect(0, F.y, F.x, F.h); ctx.fillRect(F.x+F.w, F.y, W-F.x-F.w, F.h);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5*k;
+  ctx.strokeRect(F.x, F.y, F.w, F.h);
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1*k;
+  for (let i = 1; i < 3; i++) { // 3분할 안내선
+    ctx.beginPath(); ctx.moveTo(F.x+F.w*i/3, F.y); ctx.lineTo(F.x+F.w*i/3, F.y+F.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(F.x, F.y+F.h*i/3); ctx.lineTo(F.x+F.w, F.y+F.h*i/3); ctx.stroke();
+  }
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 4*k; ctx.lineCap = 'butt';
+  const L = 18*k, o = 2*k; // 코너 브래킷
+  for (const [cx0, cy0, sx, sy] of [[F.x-o,F.y-o,1,1],[F.x+F.w+o,F.y-o,-1,1],[F.x-o,F.y+F.h+o,1,-1],[F.x+F.w+o,F.y+F.h+o,-1,-1]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx0+sx*L, cy0); ctx.lineTo(cx0, cy0); ctx.lineTo(cx0, cy0+sy*L);
+    ctx.stroke();
   }
 }
 
-// ---------- Crop 조작 (포인터) ----------
+// ---------- 핀치 줌 (보기 전용 — 내보내기엔 영향 없음) ----------
+const view = { z:1, tx:0, ty:0 };
+const pointers = new Map();
+let pinch0 = null, pan0 = null;
+function applyView() {
+  canvas.style.transform = view.z === 1 ? '' : `translate(${view.tx}px, ${view.ty}px) scale(${view.z})`;
+}
+function clampPan() { // 사진이 화면 밖으로 다 나가지 않게
+  const mx = canvas.offsetWidth*(view.z-1)/2, my = canvas.offsetHeight*(view.z-1)/2;
+  view.tx = clamp(view.tx, -mx, mx); view.ty = clamp(view.ty, -my, my);
+}
+function resetView() { view.z = 1; view.tx = view.ty = 0; applyView(); }
+
+// ---------- Crop 조작 + 핀치 (포인터) ----------
 let drag = null;
 canvas.addEventListener('pointerdown', ev => {
-  if (!cropMode || cur < 0) return;
+  if (cur < 0) return;
   try { canvas.setPointerCapture(ev.pointerId); } catch {}
-  const pt = toCanvas(ev), c = photos[cur].settings.crop;
-  const W = canvas.width, H = canvas.height, grab = Math.max(24, W/18);
-  const corners = { tl:[c.x*W, c.y*H], tr:[(c.x+c.w)*W, c.y*H], bl:[c.x*W, (c.y+c.h)*H], br:[(c.x+c.w)*W, (c.y+c.h)*H] };
-  drag = null;
-  for (const k in corners)
-    if (Math.abs(pt.x-corners[k][0]) < grab && Math.abs(pt.y-corners[k][1]) < grab) { drag = { mode:k, start:pt, orig:{...c} }; return; }
-  if (pt.x > c.x*W && pt.x < (c.x+c.w)*W && pt.y > c.y*H && pt.y < (c.y+c.h)*H)
-    drag = { mode:'move', start:pt, orig:{...c} };
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pointers.size === 2) { // 두 손가락 → 핀치 시작 (드래그 취소)
+    drag = null; pan0 = null;
+    const [a, b] = [...pointers.values()];
+    const r = canvas.getBoundingClientRect();
+    pinch0 = {
+      d: Math.hypot(a.x-b.x, a.y-b.y) || 1,
+      mid: { x:(a.x+b.x)/2, y:(a.y+b.y)/2 },
+      z: view.z, tx: view.tx, ty: view.ty,
+      cx: r.left + r.width/2 - view.tx, cy: r.top + r.height/2 - view.ty,
+      crop: cropMode && cropView ? { c0:{...photos[cur].settings.crop}, v0:{...cropView} } : null,
+    };
+    return;
+  }
+  if (cropMode) {
+    if (!cropView) return;
+    const pt = toCanvas(ev), F = cropFrame();
+    const grab = 34*qFactor();
+    const corners = { tl:[F.x,F.y], tr:[F.x+F.w,F.y], bl:[F.x,F.y+F.h], br:[F.x+F.w,F.y+F.h] };
+    drag = null;
+    for (const k in corners)
+      if (Math.abs(pt.x-corners[k][0]) < grab && Math.abs(pt.y-corners[k][1]) < grab) {
+        drag = { type:'corner', mode:k, start:pt, F0:{...F}, v0:{...cropView} }; return;
+      }
+    drag = { type:'pan', start:pt, c0:{...photos[cur].settings.crop} }; // 프레임 고정, 사진이 움직임
+  } else if (view.z > 1) { // 확대 상태에서 한 손가락 → 이동
+    pan0 = { x: ev.clientX, y: ev.clientY, tx: view.tx, ty: view.ty };
+  }
 });
 canvas.addEventListener('pointermove', ev => {
-  if (!drag) return;
-  const pt = toCanvas(ev), c = photos[cur].settings.crop, o = drag.orig;
-  const W = canvas.width, H = canvas.height;
-  const dx = (pt.x-drag.start.x)/W, dy = (pt.y-drag.start.y)/H;
-  if (drag.mode === 'move') {
-    c.x = clamp(o.x+dx, 0, 1-o.w); c.y = clamp(o.y+dy, 0, 1-o.h);
-  } else {
-    // 코너 리사이즈 — 반대편 코너 고정
-    const R = photos[cur].settings.aspect; // 픽셀 비율 w/h (null=자유)
-    let x1 = o.x, y1 = o.y, x2 = o.x+o.w, y2 = o.y+o.h;
-    if (drag.mode.includes('l')) x1 = clamp(o.x+dx, 0, x2-0.05);
-    if (drag.mode.includes('r')) x2 = clamp(o.x+o.w+dx, x1+0.05, 1);
-    if (drag.mode.includes('t')) y1 = clamp(o.y+dy, 0, y2-0.05);
-    if (drag.mode.includes('b')) y2 = clamp(o.y+o.h+dy, y1+0.05, 1);
-    if (R) { // 가로 기준으로 세로를 비율에 맞춤
-      const hNorm = clamp((x2-x1)*W/R/H, 0.05, 1);
-      if (drag.mode.includes('t')) y1 = clamp(y2-hNorm, 0, y2-0.05);
-      else y2 = clamp(y1+hNorm, y1+0.05, 1);
+  if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pinch0 && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x-b.x, a.y-b.y) || 1;
+    const mid = { x:(a.x+b.x)/2, y:(a.y+b.y)/2 };
+    if (pinch0.crop) { // crop 모드: 프레임 고정, 사진을 프레임 안으로 확대/축소
+      const p = photos[cur], c = p.settings.crop, v = cropView;
+      const pw = p.preview.width, ph = p.preview.height;
+      const { c0, v0 } = pinch0.crop;
+      let k = d/pinch0.d;
+      k = Math.max(k, c0.w, c0.h);     // 크롭이 사진보다 커지지 않게
+      k = Math.min(k, c0.w/0.03);      // 과도 확대 방지
+      const r = canvas.getBoundingClientRect();
+      const toC = pt2 => ({ x:(pt2.x-r.left)*canvas.width/r.width, y:(pt2.y-r.top)*canvas.height/r.height });
+      const m = toC(mid), m0 = toC(pinch0.mid);
+      const s2 = v0.s*k;
+      const imgX = (m0.x - v0.dx)/v0.s, imgY = (m0.y - v0.dy)/v0.s; // 중점 아래 사진 좌표 고정
+      const dx2 = m.x - imgX*s2, dy2 = m.y - imgY*s2;
+      c.w = c0.w/k; c.h = c0.h/k;
+      c.x = clamp((v0.Fx - dx2)/(s2*pw), 0, 1-c.w);
+      c.y = clamp((v0.Fy - dy2)/(s2*ph), 0, 1-c.h);
+      Object.assign(v, { s: s2, dx: v0.Fx - c.x*pw*s2, dy: v0.Fy - c.y*ph*s2 });
+      renderFast();
+    } else { // 일반 모드: 보기 줌
+      view.z = clamp(pinch0.z * d/pinch0.d, 1, 4);
+      const s = view.z/pinch0.z; // 두 손가락 중점 고정 + 이동
+      view.tx = mid.x - pinch0.cx - (pinch0.mid.x - pinch0.cx - pinch0.tx)*s;
+      view.ty = mid.y - pinch0.cy - (pinch0.mid.y - pinch0.cy - pinch0.ty)*s;
+      clampPan(); applyView();
     }
-    c.x = x1; c.y = y1; c.w = x2-x1; c.h = y2-y1;
+    return;
+  }
+  if (pan0) {
+    view.tx = pan0.tx + (ev.clientX - pan0.x);
+    view.ty = pan0.ty + (ev.clientY - pan0.y);
+    clampPan(); applyView();
+    return;
+  }
+  if (!drag) return;
+  const pt = toCanvas(ev);
+  const p = photos[cur], c = p.settings.crop, v = cropView;
+  const pw = p.preview.width, ph = p.preview.height;
+  if (drag.type === 'pan') { // 사진이 손가락을 따라 움직임 → crop은 반대 방향
+    c.x = clamp(drag.c0.x - (pt.x - drag.start.x)/(v.s*pw), 0, 1-c.w);
+    c.y = clamp(drag.c0.y - (pt.y - drag.start.y)/(v.s*ph), 0, 1-c.h);
+    v.dx = v.Fx - c.x*pw*v.s;
+    v.dy = v.Fy - c.y*ph*v.s;
+  } else { // 코너: 프레임 리사이즈 (사진 고정) — 놓으면 다시 화면을 채움
+    const R = p.settings.aspect, F0 = drag.F0, v0 = drag.v0;
+    const dxp = pt.x - drag.start.x, dyp = pt.y - drag.start.y;
+    const minS = 44*qFactor();
+    const ix1 = v0.dx, iy1 = v0.dy, ix2 = v0.dx + pw*v0.s, iy2 = v0.dy + ph*v0.s; // 사진 경계
+    let x1 = F0.x, y1 = F0.y, x2 = F0.x+F0.w, y2 = F0.y+F0.h;
+    if (drag.mode.includes('l')) x1 = clamp(F0.x+dxp, ix1, x2-minS);
+    if (drag.mode.includes('r')) x2 = clamp(F0.x+F0.w+dxp, x1+minS, ix2);
+    if (drag.mode.includes('t')) y1 = clamp(F0.y+dyp, iy1, y2-minS);
+    if (drag.mode.includes('b')) y2 = clamp(F0.y+F0.h+dyp, y1+minS, iy2);
+    if (R) { // 비율 고정 — 세로를 맞추고, 사진 경계에 닿으면 가로를 되돌림
+      if (drag.mode.includes('t')) {
+        y1 = y2-(x2-x1)/R;
+        if (y1 < iy1) { y1 = iy1; const w2 = (y2-y1)*R; if (drag.mode.includes('l')) x1 = x2-w2; else x2 = x1+w2; }
+      } else {
+        y2 = y1+(x2-x1)/R;
+        if (y2 > iy2) { y2 = iy2; const w2 = (y2-y1)*R; if (drag.mode.includes('l')) x1 = x2-w2; else x2 = x1+w2; }
+      }
+    }
+    c.x = (x1-v0.dx)/(v0.s*pw); c.y = (y1-v0.dy)/(v0.s*ph);
+    c.w = (x2-x1)/(v0.s*pw); c.h = (y2-y1)/(v0.s*ph);
   }
   renderFast();
 });
-canvas.addEventListener('pointerup', () => { if (drag) { drag = null; render(); } });
+const endPointer = ev => {
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinch0 = null;
+  pan0 = null;
+  if (drag) {
+    if (drag.type === 'corner') cropView = null; // 놓으면 새 크롭이 화면을 다시 채움 (iOS 방식)
+    drag = null;
+    render();
+  }
+  if (view.z <= 1.05 && view.z !== 1) resetView(); // 원래 크기 근처면 스냅백
+};
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
 function toCanvas(ev) {
   const r = canvas.getBoundingClientRect();
   return { x:(ev.clientX-r.left)*canvas.width/r.width, y:(ev.clientY-r.top)*canvas.height/r.height };
 }
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
-function setAspect(R) { // R = w/h 픽셀 비율, null = 자유
+function setAspect(R, outSize) { // R = w/h 픽셀 비율(null=자유), outSize = "1080x1920" 등 내보내기 고정 크기
   const p = photos[cur], s = p.settings;
   s.aspect = R;
+  s.outSize = outSize || null;
   if (R) { // 최대 크기로 중앙 배치
     const W = p.preview.width, H = p.preview.height;
     let w = 1, h = W/R/H;
     if (h > 1) { h = 1; w = R*H/W; }
     s.crop = { x:(1-w)/2, y:(1-h)/2, w, h };
   }
+  cropView = null;
   render();
   updateCropbar();
 }
@@ -312,10 +455,16 @@ function updateCropbar() {
 }
 
 // ---------- UI ----------
+function syncSlider() {
+  const v = cur >= 0 ? photos[cur].settings[adjKey] : 0;
+  aslider.min = RANGES[adjKey][0]; aslider.max = RANGES[adjKey][1];
+  aslider.value = v; aslider.nextElementSibling.value = v;
+}
 function select(i) {
   cur = i;
-  const s = photos[i].settings;
-  for (const k of ['br','ct','sa','sh']) { sliders[k].value = s[k]; sliders[k].nextElementSibling.value = s[k]; }
+  resetView();
+  cropView = null;
+  syncSlider();
   renderFilterStrip();
   renderPhotoStrip();
   updateCropbar();
@@ -374,13 +523,17 @@ function toast(msg) {
 $('addBtn').onclick = $('pickBtn').onclick = () => fileInput.click();
 fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value = ''; };
 
-for (const k of ['br','ct','sa','sh'])
-  sliders[k].oninput = () => {
-    if (cur < 0) return;
-    photos[cur].settings[k] = +sliders[k].value;
-    sliders[k].nextElementSibling.value = sliders[k].value;
-    renderFast();
-  };
+document.querySelectorAll('#atabs button').forEach(b => b.onclick = () => {
+  adjKey = b.dataset.k;
+  document.querySelectorAll('#atabs button').forEach(x => x.classList.toggle('on', x === b));
+  syncSlider();
+});
+aslider.oninput = () => {
+  if (cur < 0) return;
+  photos[cur].settings[adjKey] = +aslider.value;
+  aslider.nextElementSibling.value = aslider.value;
+  renderFast();
+};
 
 // 길게 누르는 동안 원본 표시 (보정 전후 비교)
 const cmpBtn = $('cmpBtn');
@@ -401,15 +554,19 @@ $('cropBtn').onclick = () => {
   if (cur < 0) return;
   cropMode = !cropMode;
   $('cropBtn').classList.toggle('on', cropMode);
+  $('cropBtn').textContent = cropMode ? '완료' : '자르기';
   $('cropbar').classList.toggle('show', cropMode);
+  cmpBtn.style.display = cropMode || !photos.length ? 'none' : '';
+  resetView();
+  cropView = null;
   render();
 };
 document.querySelectorAll('#cropbar [data-a]').forEach(b =>
-  b.onclick = () => setAspect(b.dataset.a ? +b.dataset.a : null));
+  b.onclick = () => setAspect(b.dataset.a ? +b.dataset.a : null, b.dataset.out));
 $('cropReset').onclick = () => {
   if (cur < 0) return;
-  photos[cur].settings.crop = { x:0, y:0, w:1, h:1 };
-  photos[cur].settings.aspect = null;
+  Object.assign(photos[cur].settings, { crop:{x:0,y:0,w:1,h:1}, aspect:null, outSize:null });
+  cropView = null;
   render(); updateCropbar();
 };
 
@@ -438,27 +595,15 @@ $('saveBtn').onclick = async () => {
     if (navigator.canShare && navigator.canShare({ files })) {
       await navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') throw e; });
     } else {
-      const isIOS = /iP(hone|od|ad)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        // iOS: 새 탭으로 열어 사용자가 길게 눌러 저장하도록 안내 (다운로드가 제한적인 경우 안전한 방법)
-        for (const f of files) {
-          const url = URL.createObjectURL(f);
-          window.open(url, '_blank');
-          await new Promise(r => setTimeout(r, 500));
-          setTimeout(() => URL.revokeObjectURL(url), 3000);
-        }
-        toast('이미지 탭을 길게 눌러 저장하세요');
-      } else {
-        for (const f of files) {
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(f);
-          a.download = f.name;
-          a.click();
-          await new Promise(r => setTimeout(r, 300));
-          URL.revokeObjectURL(a.href);
-        }
-        toast(`${files.length}장 다운로드됨`);
+      for (const f of files) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(f);
+        a.download = f.name;
+        a.click();
+        await new Promise(r => setTimeout(r, 300));
+        URL.revokeObjectURL(a.href);
       }
+      toast(`${files.length}장 다운로드됨`);
     }
   } catch (e) {
     toast('저장 실패: ' + e.message);
@@ -474,10 +619,12 @@ async function exportPhoto(p) {
   await loadImg(img, url);
   const c = p.settings.crop;
   const W = img.naturalWidth, H = img.naturalHeight;
+  const out = p.settings.outSize ? p.settings.outSize.split('x').map(Number) : null; // 고정 크기 프리셋 (예: 1080x1920)
   const cv = document.createElement('canvas');
-  cv.width = Math.round(c.w*W); cv.height = Math.round(c.h*H);
+  cv.width = out ? out[0] : Math.round(c.w*W);
+  cv.height = out ? out[1] : Math.round(c.h*H);
   const cx = cv.getContext('2d');
-  cx.drawImage(img, c.x*W, c.y*H, cv.width, cv.height, 0, 0, cv.width, cv.height);
+  cx.drawImage(img, c.x*W, c.y*H, c.w*W, c.h*H, 0, 0, cv.width, cv.height);
   URL.revokeObjectURL(url);
   cx.putImageData(applyPipeline(cx.getImageData(0, 0, cv.width, cv.height), p.settings), 0, 0);
   const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', JPEG_Q));
