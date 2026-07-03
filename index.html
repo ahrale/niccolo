@@ -4,10 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#111">
 <meta name="apple-mobile-web-app-title" content="니끌로">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<link rel="manifest" href="manifest.json">
 <title>니끌로</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -436,15 +438,27 @@ $('saveBtn').onclick = async () => {
     if (navigator.canShare && navigator.canShare({ files })) {
       await navigator.share({ files }).catch(e => { if (e.name !== 'AbortError') throw e; });
     } else {
-      for (const f of files) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(f);
-        a.download = f.name;
-        a.click();
-        await new Promise(r => setTimeout(r, 300));
-        URL.revokeObjectURL(a.href);
+      const isIOS = /iP(hone|od|ad)/.test(navigator.platform) || /iPhone|iPad|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        // iOS: 새 탭으로 열어 사용자가 길게 눌러 저장하도록 안내 (다운로드가 제한적인 경우 안전한 방법)
+        for (const f of files) {
+          const url = URL.createObjectURL(f);
+          window.open(url, '_blank');
+          await new Promise(r => setTimeout(r, 500));
+          setTimeout(() => URL.revokeObjectURL(url), 3000);
+        }
+        toast('이미지 탭을 길게 눌러 저장하세요');
+      } else {
+        for (const f of files) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(f);
+          a.download = f.name;
+          a.click();
+          await new Promise(r => setTimeout(r, 300));
+          URL.revokeObjectURL(a.href);
+        }
+        toast(`${files.length}장 다운로드됨`);
       }
-      toast(`${files.length}장 다운로드됨`);
     }
   } catch (e) {
     toast('저장 실패: ' + e.message);
